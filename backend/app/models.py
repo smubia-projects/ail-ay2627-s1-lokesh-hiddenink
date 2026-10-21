@@ -62,5 +62,7 @@ class ScanReport(BaseModel):
     pages: list[PageInfo]
     machine_text: str
     sanitized_text: str
+    # Non-benign hidden fragments; the browser sends them back to /api/screen for the tripwire check.
+    hidden_texts: list[str] = Field(default_factory=list)
     ai_layers: dict
     warnings: list[str] = Field(default_factory=list)

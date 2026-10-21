@@ -35,7 +35,6 @@ def fake_llm(monkeypatch):
 
     monkeypatch.setattr(config, "OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(llm, "json_call", fake)
-    monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0]] * len(texts))
     return calls
 
 

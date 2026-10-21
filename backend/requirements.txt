@@ -7,8 +7,4 @@ pymupdf==1.28.2
 python-docx==1.2.0
 rapidfuzz==3.14.6
 numpy==2.5.4
-pymongo==4.18.3
-mongomock==4.3.0
-bcrypt==5.0.0
-PyJWT==2.15.1
 slowapi==0.1.10
