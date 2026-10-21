@@ -7,4 +7,4 @@ pymupdf==1.28.2
 python-docx==1.2.0
 rapidfuzz==3.14.6
 numpy==2.5.4
-slowapi==0.1.10
+upstash-redis==1.8.0

@@ -72,3 +72,21 @@ def test_redteam_endpoint():
     body = r.json()
     assert body["detected"] and body["answer_key"]["technique"] == "tiny_font" and body["file_b64"]
     assert client.post("/api/redteam/attack", json={"technique": "nope"}).status_code == 400
+
+
+def test_rate_limit_buckets(monkeypatch):
+    from app import rate_limit
+    from app.rate_limit_engine import RateLimitStatus
+    buckets = []
+
+    def fake_status(ip, bucket):
+        buckets.append(bucket)
+        return RateLimitStatus("limited", 5) if bucket == "redteam" else RateLimitStatus("killed", None)
+
+    monkeypatch.setattr(rate_limit.limiter, "status", fake_status)
+    r = client.post("/api/redteam/attack", json={})
+    assert r.status_code == 429 and r.json()["detail"]["queries_used"] == 5
+    r = client.post("/api/scan", files={"file": ("x.pdf", b"%PDF-", "application/pdf")})
+    assert r.status_code == 503 and "paused" in r.json()["detail"]["message"]
+    assert client.get("/api/health").status_code == 200 and client.get("/api/samples").status_code == 200
+    assert buckets == ["redteam", "scan"]  # only LLM routes are counted
