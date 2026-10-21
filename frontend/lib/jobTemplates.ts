@@ -1,4 +1,4 @@
-// Copied from JOBS in backend/app/redteam/samples.py. Offered to demo users as screening templates.
+// Copied from JOBS in backend/app/redteam/samples.py. Offered as screening templates.
 export const JOB_TEMPLATES: { id: string; label: string; text: string }[] = [
   { id: "data-analyst", label: "Data Analyst", text: "Data Analyst. Requirements: 2+ years of SQL and Python for analysis; experience building dashboards in Power BI or Tableau; ability to explain insights to non-technical stakeholders; degree in a quantitative field." },
   { id: "software-engineer", label: "Backend Software Engineer", text: "Backend Software Engineer. Requirements: 5+ years building production services; strong Go or Java; distributed systems design; Kubernetes in production; on-call experience." },

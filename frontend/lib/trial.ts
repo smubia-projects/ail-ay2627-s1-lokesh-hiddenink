@@ -1,32 +1,22 @@
-// Free-trial guide progress, kept in sessionStorage per trial session (a new trial starts fresh).
-import { getUser } from "@/lib/api";
-
-export type TrialStep = "scan" | "screen" | "decision";
+// Getting-started guide progress, kept in sessionStorage for this browser tab.
+export type TrialStep = "scan" | "screen" | "lab";
 export type TrialProgress = Partial<Record<TrialStep, boolean>> & { dismissed?: boolean };
-export const TRIAL_EVENT = "hiddenink:trial-progress";
-
-function key(): string | null {
-  const u = getUser();
-  return u?.is_demo ? `hiddenink_trial_${u.id}` : null;
-}
+export const TRIAL_EVENT = "hiddenink:guide-progress";
+const KEY = "ail-ay2627-s1-lokesh-hiddenink:guide";
 
 export function getTrialProgress(): TrialProgress {
-  const k = key();
-  if (!k) return {};
-  try { return JSON.parse(sessionStorage.getItem(k) || "{}"); } catch { return {}; }
+  try { return JSON.parse(sessionStorage.getItem(KEY) || "{}"); } catch { return {}; }
 }
 
 function save(p: TrialProgress) {
-  const k = key();
-  if (!k) return;
-  try { sessionStorage.setItem(k, JSON.stringify(p)); } catch {}
+  try { sessionStorage.setItem(KEY, JSON.stringify(p)); } catch {}
   window.dispatchEvent(new Event(TRIAL_EVENT));
 }
 
-/** Ticks a step of the guided first run. Does nothing for real accounts. */
+/** Ticks a step of the guided first run. */
 export function markTrialStep(step: TrialStep) {
   const p = getTrialProgress();
-  if (!p[step] && key()) save({ ...p, [step]: true });
+  if (!p[step]) save({ ...p, [step]: true });
 }
 
 export function dismissTrialGuide() {

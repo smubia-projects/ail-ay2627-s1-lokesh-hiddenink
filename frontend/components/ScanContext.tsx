@@ -1,13 +1,12 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { getUser, SCAN_STORAGE_KEYS, SESSION_CLEARED_EVENT } from "@/lib/api";
-import { Naive, Protected, ScanReport } from "@/lib/types";
+import { Protected, ScanReport } from "@/lib/types";
 
 // Keeps the current scan across page changes (context) and refreshes in the same tab (sessionStorage).
 
 export const SAMPLE_JD = "Data Analyst. Requirements: 2+ years of SQL and Python for analysis; experience building dashboards in Power BI or Tableau; ability to explain insights to non-technical stakeholders; degree in a quantitative field.";
 
-export type ScreenResult = { naive?: Naive; protected?: Protected; naive_error?: string; protected_error?: string };
+export type ScreenResult = { protected?: Protected; protected_error?: string };
 
 type ScanState = {
   report: ScanReport | null;
@@ -25,22 +24,21 @@ type ScanState = {
 };
 
 const ScanContext = createContext<ScanState | null>(null);
-const [REPORT_KEY, UI_KEY] = SCAN_STORAGE_KEYS;
+const REPORT_KEY = "ail-ay2627-s1-lokesh-hiddenink:scan";
+const UI_KEY = "ail-ay2627-s1-lokesh-hiddenink:scan-ui";
 
 function load<T>(key: string): T | null {
   try {
     const raw = sessionStorage.getItem(key);
     if (!raw) return null;
-    const v = JSON.parse(raw);
-    if (v.owner === getUser()?.id) return v;
-    sessionStorage.removeItem(key);
+    return JSON.parse(raw);
   } catch {}
   return null;
 }
 
 function save(key: string, value: object | null) {
   try {
-    if (value) sessionStorage.setItem(key, JSON.stringify({ owner: getUser()?.id, ...value }));
+    if (value) sessionStorage.setItem(key, JSON.stringify(value));
     else sessionStorage.removeItem(key);
   } catch {
     // Too large (page images) or storage unavailable: keep it in memory only, and drop any older copy.
@@ -79,12 +77,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
       if (ui.jobDescription) setJobDescription(ui.jobDescription);
     }
     setLoaded(true);
-
-    // Sign-out, an expired session or a different account: drop the scan everywhere, including the job description.
-    const onCleared = () => { clearScan(); setJobDescription(SAMPLE_JD); };
-    window.addEventListener(SESSION_CLEARED_EVENT, onCleared);
-    return () => window.removeEventListener(SESSION_CLEARED_EVENT, onCleared);
-  }, [clearScan]);
+  }, []);
 
   // Stored separately so selecting a finding doesn't re-serialize the page images.
   useEffect(() => { if (loaded) save(REPORT_KEY, report ? { report } : null); }, [loaded, report]);

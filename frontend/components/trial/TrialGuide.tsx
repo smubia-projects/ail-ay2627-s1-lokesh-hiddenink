@@ -4,11 +4,11 @@ import { useTrialProgress } from "./useTrialProgress";
 
 const STEPS: { id: TrialStep; title: string; hint: string }[] = [
   { id: "scan", title: "Scan a sample", hint: "Pick one of the sample resumes below, or upload your own." },
-  { id: "screen", title: "Compare the naive and protected screener", hint: "Run both AI screeners on the result and see which one is fooled." },
-  { id: "decision", title: "Save a decision", hint: "On a flagged resume, reject, clear or escalate it with a reason." },
+  { id: "screen", title: "Run the protected screener", hint: "Score the resume against a job using only the visible text." },
+  { id: "lab", title: "Fire a Red-Team attack", hint: "In the Red-Team Lab, hide a payload and see if HiddenInk catches it." },
 ];
 
-/** The dismissible 3-step checklist shown at the top of the Scan page during a free trial. */
+/** The dismissible 3-step checklist shown at the top of the Scan page. */
 export default function TrialGuide() {
   const progress = useTrialProgress();
   if (progress.dismissed) return null;

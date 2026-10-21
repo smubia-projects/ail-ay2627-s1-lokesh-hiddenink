@@ -1,13 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRequireAuth } from "@/components/useAuth";
-import { api, b64ToBlob, downloadBlob } from "@/lib/api";
+import { api, b64ToBlob, downloadBlob, errorMessage } from "@/lib/api";
+import { markTrialStep } from "@/lib/trial";
 import { TECHNIQUE_LABELS } from "@/lib/types";
 
 const nice = (s: string) => s.replace(/_/g, " ");
 
 export default function LabPage() {
-  const user = useRequireAuth();
   const [opts, setOpts] = useState<any>(null);
   const [form, setForm] = useState({ sample_id: "random", technique: "random", goal: "random", style: "random", seed: "", screen: false });
   const [busy, setBusy] = useState(false);
@@ -15,7 +14,7 @@ export default function LabPage() {
   const [result, setResult] = useState<any>(null);
   const [runs, setRuns] = useState<any[]>([]);
 
-  useEffect(() => { if (user) api("/api/redteam/options").then(setOpts).catch((e) => setError(e.message)); }, [user]);
+  useEffect(() => { api("/api/redteam/options").then(setOpts).catch((e) => setError(errorMessage(e))); }, []);
 
   async function attack() {
     setBusy(true); setError("");
@@ -27,10 +26,10 @@ export default function LabPage() {
       }) });
       setResult(r);
       setRuns((prev) => [r, ...prev].slice(0, 30));
-    } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+      markTrialStep("lab");
+    } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
   }
 
-  if (!user) return null;
   const counted = runs.filter((r) => r.counted);
   const caught = counted.filter((r) => r.detected).length;
 
@@ -48,9 +47,7 @@ export default function LabPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-ink-900">Red-Team Lab</h1>
-        {user?.is_demo ? (
-          <p className="text-sm text-gray-600">See the tricks candidates use to fool AI screeners, and watch HiddenInk catch them.</p>
-        ) : <p className="text-sm text-gray-600">HiddenInk attacks itself. Each run writes a fresh payload {opts?.openai ? "with OpenAI" : "from templates"}, hides it with randomised settings, checks that a person really couldn&apos;t see it, then tests whether HiddenInk catches it. Picks lean towards techniques that slipped through before.</p>}
+        <p className="text-sm text-gray-600">HiddenInk attacks itself. Each run writes a fresh payload {opts?.ai_enabled ? "with an LLM" : "from templates"}, hides it with randomised settings, checks that a person really couldn&apos;t see it, then tests whether HiddenInk catches it. Generated attacks are returned to you only and never stored.</p>
       </div>
       <div className="card">
         {!opts && !error && (
@@ -68,7 +65,7 @@ export default function LabPage() {
         )}
         <div className="mt-3 flex flex-wrap items-end gap-4">
           <div><label className="label">Seed (optional)</label><input className="input w-36" inputMode="numeric" value={form.seed} onChange={(e) => setForm({ ...form, seed: e.target.value.replace(/\D/g, "") })} placeholder="random" /></div>
-          <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" className="accent-indigo-600" checked={form.screen} disabled={!opts?.openai} onChange={(e) => setForm({ ...form, screen: e.target.checked })} />Also test both screeners (PDF only, uses more tokens)</label>
+          <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" className="accent-indigo-600" checked={form.screen} disabled={!opts?.ai_enabled} onChange={(e) => setForm({ ...form, screen: e.target.checked })} />Also test both screeners (PDF only, uses more tokens)</label>
           <button className="btn-primary btn-glow ml-auto" onClick={attack} disabled={busy || !opts}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M13 3 5 14h6l-1 7 8-11h-6z" /></svg>
             {busy ? "Attacking…" : "Fire attack"}
