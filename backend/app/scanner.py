@@ -55,11 +55,11 @@ def scan(file_name: str, data: bytes, use_ai: bool = True) -> tuple[ScanReport, 
     if len(data) > config.MAX_FILE_MB * 1024 * 1024:
         raise ValueError(f"File is larger than {config.MAX_FILE_MB:g} MB.")
     ftype = detect_type(file_name, data)
-    use_ai = use_ai and config.openai_enabled()
+    use_ai = use_ai and config.llm_enabled()
     ai_layers = {"vision_gap": "off", "classifier": "off", "payload_library": "fuzzy"}
     warnings: list[str] = []
-    if not config.openai_enabled():
-        warnings.append("OpenAI key not configured: running deterministic layers only.")
+    if not config.llm_enabled():
+        warnings.append("LLM API key not configured: running deterministic layers only.")
 
     raw: list[dict] = []
     pages: list[dict] = []

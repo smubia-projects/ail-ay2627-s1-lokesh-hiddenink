@@ -8,7 +8,7 @@ Usage (from the backend folder):
 Rules this script enforces:
 - The held-out set is never used for tuning. Headline numbers come only from it.
 - Every attack is checked for real invisibility before it counts.
-- Each fuzz round is capped by attack count and OpenAI token budget.
+- Each fuzz round is capped by attack count and LLM token budget.
 """
 from __future__ import annotations
 
@@ -147,7 +147,7 @@ def evaluate_set(attacks: list[dict], clean: list[dict], use_ai: bool, progress_
 
     n = len(attacks) or 1
     out = {
-        "ai_layers": use_ai and config.openai_enabled(), "attacks": len(attacks),
+        "ai_layers": use_ai and config.llm_enabled(), "attacks": len(attacks),
         "detection_rate": round(sum(t["detected"] for t in per.values()) / n, 3),
         "technique_accuracy": round(sum(t["identified"] for t in per.values()) / n, 3),
         "flag_rate": round(sum(t["flagged"] for t in per.values()) / n, 3),
@@ -252,7 +252,7 @@ def main(argv=None) -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build")
     b.add_argument("--n", type=int, default=56, help="attacks per set (default 56 = 4 per technique)")
-    b.add_argument("--no-ai", action="store_true", help="use payload templates instead of OpenAI")
+    b.add_argument("--no-ai", action="store_true", help="use payload templates instead of the LLM")
     r = sub.add_parser("run")
     r.add_argument("--set", default="heldout", choices=["heldout", "benchmark"])
     r.add_argument("--version", default="v1")
@@ -269,8 +269,8 @@ def main(argv=None) -> None:
     elif a.cmd == "run":
         run(a.set, a.version, use_ai=not a.no_ai, do_screen=a.screen, limit=a.limit)
     else:
-        if not config.openai_enabled():
-            print("Fuzzing works best with OPENAI_API_KEY set (fresh payloads and harder variants); continuing with templates.", file=sys.stderr)
+        if not config.llm_enabled():
+            print("Fuzzing works best with OPENROUTER_API_KEY set (fresh payloads and harder variants); continuing with templates.", file=sys.stderr)
         fuzz(a.rounds, a.n, a.version)
 
 

@@ -89,7 +89,7 @@ def classify(findings: list[dict], use_llm: bool) -> str | None:
     payload = [{"id": f["id"], "technique": f["techniques"], "hidden_text": f["text"][:1500]} for f in findings]
     try:
         out = llm.cached_json_call(SYSTEM, "Hidden fragments (JSON data):\n" + json.dumps(payload, ensure_ascii=False),
-                            "hidden_text_classification", SCHEMA, model=config.OPENAI_CHEAP_MODEL,
+                            "hidden_text_classification", SCHEMA, model=config.OPENROUTER_CHEAP_MODEL,
                             max_tokens=config.MAX_TOKENS_CLASSIFY, reasoning_effort=config.REASONING_CLASSIFY)
     except Exception as exc:  # noqa: BLE001
         return f"Classifier unavailable, regex-only labels used ({type(exc).__name__})."

@@ -54,7 +54,7 @@ def sample_scan(sample_key: str) -> ScanReport | None:
         cached = _reports.get(sample_key)
         if cached is None or (cached[0] is not None and time.time() > cached[0]):
             name, data = _sample_file(s)
-            report, _ctx = scanner.scan(name, data, use_ai=config.openai_enabled())
+            report, _ctx = scanner.scan(name, data, use_ai=config.llm_enabled())
             ok = all(v != "error" for v in report.ai_layers.values())
             cached = (None if ok else time.time() + DEGRADED_TTL, report)
             _reports[sample_key] = cached

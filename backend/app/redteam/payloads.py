@@ -1,6 +1,6 @@
 """Payload generation for the Red-Team Lab.
 
-OpenAI writes a fresh payload in new wording each run (structured output),
+An LLM (via OpenRouter) writes a fresh payload in new wording each run (structured output),
 and code validates it. Templates are the fallback when no key is configured,
 and are also randomised so offline runs still vary.
 """
@@ -41,7 +41,7 @@ SCHEMA = llm.obj({"payload_text": {"type": "string"}, "language": {"type": "stri
 
 def _writer_kw() -> dict:
     """The payload writer's model settings. Payloads must stay fresh, so these calls are never cached."""
-    return {"model": config.OPENAI_CHEAP_MODEL, "max_tokens": config.MAX_TOKENS_PAYLOAD,
+    return {"model": config.OPENROUTER_CHEAP_MODEL, "max_tokens": config.MAX_TOKENS_PAYLOAD,
             "reasoning_effort": config.REASONING_PAYLOAD}
 
 
@@ -106,9 +106,9 @@ def _valid(text: str, goal: str, avoid: list[str]) -> bool:
 
 def generate(goal: str, style: str, rng: random.Random, avoid: list[str] | None = None,
              use_ai: bool = True) -> tuple[str, str]:
-    """Return (payload, source) where source is 'openai' or 'template'."""
+    """Return (payload, source) where source is 'llm' or 'template'."""
     avoid = avoid or []
-    if use_ai and config.openai_enabled():
+    if use_ai and config.llm_enabled():
         for _ in range(2):
             try:
                 out = llm.json_call(
@@ -118,7 +118,7 @@ def generate(goal: str, style: str, rng: random.Random, avoid: list[str] | None 
                     "redteam_payload", SCHEMA, **_writer_kw())
                 text = out["payload_text"].strip()
                 if _valid(text, goal, avoid):
-                    return text, "openai"
+                    return text, "llm"
             except Exception:  # noqa: BLE001
                 break
     for _ in range(10):
@@ -129,13 +129,13 @@ def generate(goal: str, style: str, rng: random.Random, avoid: list[str] | None 
 
 
 def harder_variant(missed: str, goal: str, rng: random.Random) -> tuple[str, str]:
-    if config.openai_enabled():
+    if config.llm_enabled():
         try:
             out = llm.json_call(HARDER_SYSTEM, f"GOAL: {GOALS[goal]}\nPREVIOUS PAYLOAD:\n{missed}\nSEED: {rng.randint(0, 10**6)}",
                                 "redteam_harder", SCHEMA, **_writer_kw())
             text = out["payload_text"].strip()
             if _valid(text, goal, [missed]):
-                return text, "openai-harder"
+                return text, "llm-harder"
         except Exception:  # noqa: BLE001
             pass
     return generate(goal, "subtle", rng, avoid=[missed], use_ai=False)

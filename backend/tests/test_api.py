@@ -48,7 +48,7 @@ def test_samples():
 
 def test_screen_takes_the_text_from_the_request(monkeypatch):
     seen = []
-    monkeypatch.setattr(main.config, "openai_enabled", lambda: True)
+    monkeypatch.setattr(main.config, "llm_enabled", lambda: True)
     monkeypatch.setattr(main.screen, "protected", lambda jd, text, hidden: seen.append((text, hidden)) or SimpleNamespace(
         model_dump=lambda: {"overall_score": 3.0, "tripwire": []}))
     rep = _scan()
