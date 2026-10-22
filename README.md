@@ -59,7 +59,7 @@ An LLM (via OpenRouter) is used in four places, each with a deterministic check 
 | **Naive screener** | Same model, raw text, no defences | Exists only to demonstrate the attack fairly. |
 | **Red-Team Lab** (`backend/app/redteam/`) | Structured outputs generate fresh payloads by goal and style, and harder variants of missed ones | Code validates length, content and novelty, embeds them with seeded random parameters, and verifies invisibility by rendering the page. |
 
-Models are OpenRouter IDs set by environment variables (`OPENROUTER_TEXT_MODEL`, `OPENROUTER_VISION_MODEL`, `OPENROUTER_CHEAP_MODEL`). Defaults are `openai/gpt-5.4-mini` (screening and vision) and `openai/gpt-5.4-nano` (classifier and payload writer).
+Models are OpenRouter IDs set by environment variables (`MODEL_NAME`, `VISION_MODEL_NAME`, `CHEAP_MODEL_NAME`). Defaults are `openai/gpt-5.4-mini` (screening and vision) and `openai/gpt-5.4-nano` (classifier and payload writer).
 
 ## 5. External Tools & Datasets
 
@@ -90,7 +90,7 @@ cp .env.example .env.local                             # NEXT_PUBLIC_API_BASE=ht
 npm run dev                                            # open http://localhost:3000
 ```
 
-Without `OPENROUTER_API_KEY`, everything except the vision check, the classifier, screening and fresh payload generation still works, and the app says which layers are off.
+Without `API_KEY`, everything except the vision check, the classifier, screening and fresh payload generation still works, and the app says which layers are off.
 Without the Upstash variables, rate limiting is disabled (fine for local development).
 
 **Tests and evaluation**
