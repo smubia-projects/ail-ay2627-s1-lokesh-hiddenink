@@ -27,7 +27,7 @@ def test_client_points_at_openrouter(monkeypatch):
     monkeypatch.setattr(config, "OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(llm, "_client", None)
     c = llm.client()
-    assert str(c.base_url).rstrip("/") == "https://openrouter.ai/api/v1"
+    assert str(c.base_url).rstrip("/") == "https://api.apiyi.com/v1"
     monkeypatch.setattr(llm, "_client", None)
 
 
@@ -36,8 +36,8 @@ def test_minimal_effort_falls_back_to_low(monkeypatch):
     monkeypatch.setattr(llm, "_minimal_rejected", False)
     responses = [_BadRequest("Unsupported value: 'minimal' for reasoning.effort"), ('{"ok": 1}', "stop"), ('{"ok": 2}', "stop")]
     monkeypatch.setattr(llm, "client", lambda: _fake_client(responses, seen))
-    assert llm.json_call("s", "u", "x", {}, model="openai/gpt-5.4-nano", reasoning_effort="minimal") == {"ok": 1}
-    assert llm.json_call("s", "u", "x", {}, model="openai/gpt-5.4-nano", reasoning_effort="minimal") == {"ok": 2}
+    assert llm.json_call("s", "u", "x", {}, model="gpt-5.4-nano", reasoning_effort="minimal") == {"ok": 1}
+    assert llm.json_call("s", "u", "x", {}, model="gpt-5.4-nano", reasoning_effort="minimal") == {"ok": 2}
     assert [s["effort"] for s in seen] == ["minimal", "low", "low"]  # remembered for the process
 
 
