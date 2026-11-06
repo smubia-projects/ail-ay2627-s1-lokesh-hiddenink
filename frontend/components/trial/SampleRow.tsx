@@ -6,10 +6,10 @@ type Sample = { id: string; title: string; description: string };
 const BADGE: Record<string, string> = { clean: "badge-clean", "white-text": "badge-poisoned", unicode: "badge-poisoned" };
 const BADGE_TEXT: Record<string, string> = { clean: "Nothing hidden", "white-text": "Hidden attack", unicode: "Hidden attack" };
 
-/** One-click sample resumes for the free trial. */
+/** One-click sample resumes, so visitors can try HiddenInk without a file of their own. */
 export default function SampleRow({ busy, onPick }: { busy: boolean; onPick: (s: Sample) => void }) {
   const [samples, setSamples] = useState<Sample[] | null>(null);
-  useEffect(() => { api<{ samples: Sample[] }>("/api/demo/samples").then((r) => setSamples(r.samples)).catch(() => setSamples([])); }, []);
+  useEffect(() => { api<{ samples: Sample[] }>("/api/samples").then((r) => setSamples(r.samples)).catch(() => setSamples([])); }, []);
   if (samples && samples.length === 0) return null;
   return (
     <section aria-label="Try a sample">

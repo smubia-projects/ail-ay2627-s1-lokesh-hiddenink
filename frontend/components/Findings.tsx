@@ -28,7 +28,7 @@ export default function Findings({ report, active, onSelect }: { report: ScanRep
               <span className="chip bg-ink-50 text-ink-700">{CATEGORY_LABELS[f.category] || f.category}</span>
               {f.techniques.map((t) => <span key={t} className="chip bg-uv-500/10 text-uv-700">{TECHNIQUE_LABELS[t] || t}</span>)}
               <span className="chip bg-gray-50 text-gray-500">found by {f.source === "both" ? "forensics + vision" : f.source}</span>
-              {f.payload_matches > 0 && <span className="chip bg-purple-100 text-purple-700">matches {f.payload_matches} confirmed attack{f.payload_matches > 1 ? "s" : ""}</span>}
+              {f.payload_matches > 0 && <span className="chip bg-purple-100 text-purple-700">matches {f.payload_matches} known attack{f.payload_matches > 1 ? "s" : ""}</span>}
               {f.page !== null && <span className="ml-auto text-xs text-gray-500">page {f.page + 1}</span>}
             </div>
             <blockquote className="revealed-ink">{f.text}</blockquote>

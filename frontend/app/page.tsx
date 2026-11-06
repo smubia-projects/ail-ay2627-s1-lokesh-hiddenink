@@ -1,42 +1,34 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Findings from "@/components/Findings";
 import RevealView from "@/components/RevealView";
-import Review from "@/components/Review";
 import { useScan } from "@/components/ScanContext";
 import Screening from "@/components/Screening";
 import SampleRow from "@/components/trial/SampleRow";
 import TrialGuide from "@/components/trial/TrialGuide";
-import { useTrialProgress } from "@/components/trial/useTrialProgress";
 import { prefersReducedMotion } from "@/components/ui/motion";
 import Notice from "@/components/ui/Notice";
 import Verdict from "@/components/Verdict";
-import { useRequireAuth } from "@/components/useAuth";
-import { api, downloadBlob } from "@/lib/api";
+import { api, downloadBlob, errorMessage } from "@/lib/api";
 import { markTrialStep } from "@/lib/trial";
 import { ScanReport } from "@/lib/types";
 
-const GENERIC_SAVED = "Saved to your organization's review log.";
 const SCAN_STEPS = ["Reading every character…", "Rendering pages…", "Asking the vision model what a human sees…", "Scoring risk…"];
 
 export default function ScanPage() {
-  const user = useRequireAuth();
   const { report, setReport, active, setActive, clearScan, beginRequest } = useScan();
   const [scanning, setScanning] = useState("");
-  const trial = useTrialProgress();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState<string | null>(null);
-  const [openai, setOpenai] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const [drag, setDrag] = useState(false);
   const [showText, setShowText] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(0);
-  const scanSteps = openai ? SCAN_STEPS : SCAN_STEPS.filter((x) => !x.includes("vision"));
+  const scanSteps = aiEnabled ? SCAN_STEPS : SCAN_STEPS.filter((x) => !x.includes("vision"));
 
-  useEffect(() => { api("/api/health").then((h) => setOpenai(!!h.openai)).catch(() => {}); }, []);
+  useEffect(() => { api("/api/info").then((h) => setAiEnabled(!!h.ai_enabled)).catch(() => {}); }, []);
   useEffect(() => {
     if (!busy) return;
     setStep(0);
@@ -47,11 +39,11 @@ export default function ScanPage() {
   async function runScan(label: string, request: () => Promise<ScanReport>) {
     clearScan();
     const current = beginRequest();
-    setScanning(label); setBusy(true); setError(""); setSaved(null); setShowText(false);
+    setScanning(label); setBusy(true); setError(""); setShowText(false);
     try {
       const r = await request();
       if (current()) { setReport(r); markTrialStep("scan"); }  // ignore results for a scan that was replaced or signed out of meanwhile
-    } catch (e: any) { if (current()) setError(e.message); } finally { setBusy(false); }
+    } catch (e) { if (current()) setError(errorMessage(e)); } finally { setBusy(false); }
   }
 
   function scan(f: File) {
@@ -61,15 +53,7 @@ export default function ScanPage() {
   }
 
   function scanSample(s: { id: string; title: string }) {
-    return runScan(s.title.toLowerCase(), () => api<ScanReport>(`/api/demo/samples/${s.id}/scan`, { method: "POST" }));
-  }
-
-  function onDecisionSaved(message: string) {
-    markTrialStep("decision");
-    clearScan();
-    setShowText(false);
-    setSaved(message);
-    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    return runScan(s.title.toLowerCase(), () => api<ScanReport>(`/api/samples/${s.id}/scan`, { method: "POST" }));
   }
 
   function select(id: string) {
@@ -77,7 +61,6 @@ export default function ScanPage() {
     document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "nearest" });
   }
 
-  if (!user) return null;
   return (
     <div className="space-y-5">
       <div>
@@ -85,8 +68,8 @@ export default function ScanPage() {
         <p className="text-sm text-gray-600">Upload a resume (PDF or DOCX, up to 10 MB and 5 pages). Files are processed in memory and never stored.</p>
       </div>
 
-      {user.is_demo && <TrialGuide />}
-      {user.is_demo && <SampleRow busy={busy} onPick={scanSample} />}
+      <TrialGuide />
+      <SampleRow busy={busy} onPick={scanSample} />
 
       <div onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) scan(f); }}
@@ -114,15 +97,6 @@ export default function ScanPage() {
         </p>
       </div>
       {error && <Notice kind="error">{error}</Notice>}
-      {saved && !report && (
-        <Notice kind="success">
-          <p>
-            Decision saved to the review log.{" "}
-            <Link href="/history" className="font-medium underline">View review log</Link>
-          </p>
-          {saved !== GENERIC_SAVED && <p className="mt-1 text-xs opacity-80">{saved}</p>}
-        </Notice>
-      )}
 
       {report && (
         <>
@@ -157,19 +131,8 @@ export default function ScanPage() {
               </pre>
             )}
           </div>
-          <Screening scanId={report.scan_id} enabled={openai} />
-          {report.verdict !== "Clean" && <Review key={report.scan_id} scanId={report.scan_id} demo={user.is_demo} onSaved={onDecisionSaved} />}
+          <Screening report={report} enabled={aiEnabled} />
         </>
-      )}
-
-      {user.is_demo && trial.scan && (
-        <section className="card flex flex-wrap items-center justify-between gap-3 border-ink-100" aria-label="Create an account">
-          <div>
-            <h2 className="font-semibold">Like it? Create an account to keep this review log.</h2>
-            <p className="text-xs text-gray-500">Your trial scans and decisions move into your new account. No more deletion at sign-out, and no trial limits.</p>
-          </div>
-          <Link href="/upgrade" className="btn-primary">Create free account</Link>
-        </section>
       )}
     </div>
   );
