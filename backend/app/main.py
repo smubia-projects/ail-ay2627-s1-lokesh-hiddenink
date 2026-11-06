@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import config, demo_samples, scanner, screen
+from .rate_limit import check_rate_limit
 from .redteam import lab
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -49,6 +50,7 @@ def info():
 # ---------- scanning ----------
 @app.post("/api/scan")
 async def scan(request: Request, file: UploadFile = File(...)):
+    check_rate_limit(request, "scan")
     data = await _read_upload(file)
     try:
         report, _ctx = scanner.scan(file.filename or "upload", data, use_ai=True)
@@ -84,6 +86,7 @@ class ScreenIn(BaseModel):
 def run_screen(request: Request, body: ScreenIn):
     if not config.llm_enabled():
         raise HTTPException(501, "Screening needs an OpenRouter API key on the server.")
+    check_rate_limit(request, "screen")
     hidden = [h[:3000] for h in body.hidden_texts]
     try:
         return {"protected": screen.protected(body.job_description, body.sanitized_text, hidden).model_dump()}
@@ -110,6 +113,7 @@ class RedTeamIn(BaseModel):
 
 @app.post("/api/redteam/attack")
 def redteam_attack(request: Request, body: RedTeamIn):
+    check_rate_limit(request, "redteam")
     # Generated attacks are returned to the browser only; nothing about the run is persisted.
     try:
         return lab.attack_and_test(body.sample_id, body.technique, body.goal, body.style, body.seed,

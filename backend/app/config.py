@@ -51,6 +51,15 @@ CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3
 MAX_FILE_MB = float(os.getenv("MAX_FILE_MB", "10"))
 MAX_PAGES = int(os.getenv("MAX_PAGES", "5"))
 
+# Rate limiting (shared engine, Upstash Redis). Unset Upstash vars disable it (local dev).
+# These maxima are fallbacks; the central control sheet overrides them at runtime.
+UPSTASH_REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL") or os.getenv("UPSTASH_REDIS_URL", "")
+UPSTASH_REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN") or os.getenv("UPSTASH_REDIS_TOKEN", "")
+RATE_LIMIT_SCAN_MAX = int(os.getenv("RATE_LIMIT_SCAN_MAX", "5"))
+RATE_LIMIT_SCREEN_MAX = int(os.getenv("RATE_LIMIT_SCREEN_MAX", "5"))
+RATE_LIMIT_REDTEAM_MAX = int(os.getenv("RATE_LIMIT_REDTEAM_MAX", "5"))
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "432000"))  # 5 days
+
 # Cost caps per fuzz round of the offline eval CLI (python -m eval.run_eval fuzz).
 FUZZ_MAX_ATTACKS = int(os.getenv("FUZZ_MAX_ATTACKS", "30"))
 FUZZ_TOKEN_BUDGET = int(os.getenv("FUZZ_TOKEN_BUDGET", "200000"))

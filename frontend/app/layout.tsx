@@ -4,6 +4,7 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 import Nav from "@/components/Nav";
 import MainShell from "@/components/MainShell";
+import RateLimitHost from "@/components/RateLimitCTA";
 import { ScanProvider } from "@/components/ScanContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MainShell>{children}</MainShell>
         </ScanProvider>
         <Footer />
+        <RateLimitHost />
       </body>
     </html>
   );
