@@ -20,6 +20,5 @@ next-env.d.ts
 # generated evaluation files (regenerate with python -m eval.run_eval build)
 backend/eval/sets/
 backend/eval/results/fuzz_state.json
-backend/eval/results/spend.json
 
 .DS_Store
