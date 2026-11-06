@@ -17,9 +17,6 @@ from rapidfuzz import fuzz
 from . import config, llm
 from .forensics.pdf import Span
 
-
-
-
 log = logging.getLogger("hiddenink.gap")
 
 MIN_GAP_CHARS = 12
@@ -54,7 +51,7 @@ def transcribe(image_b64: str) -> str:
 
 def run(spans: list[Span], pages: list[dict]) -> tuple[list[dict], list[str], dict]:
     """Return (gap_findings, human_texts, cross_check) where cross_check maps span seqno keys to 'seen'/'unseen'."""
-    # Each page runs in a copy of the caller's context, so per-request settings (the trial AI allowance) apply.
+    # Each page runs in a copy of the caller's context, so any per-request context variables still apply.
     contexts = [contextvars.copy_context() for _ in pages]
     with ThreadPoolExecutor(max_workers=4) as ex:
         human = list(ex.map(lambda cp: cp[0].run(transcribe, cp[1]["image_b64"]), zip(contexts, pages)))

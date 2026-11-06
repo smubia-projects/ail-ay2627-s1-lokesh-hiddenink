@@ -150,7 +150,7 @@ def evaluate(attack: dict, use_ai: bool = True) -> dict:
 
 
 def _baseline(sample_id: str, job: str) -> dict:
-    """Screener scores for the clean built-in resume, cached (memory + MongoDB) so they are paid for once."""
+    """Screener scores for the clean built-in resume, cached in memory so they are paid for once per process."""
     key = llm.cache_key("redteam-baseline", sample_id, job, config.OPENAI_TEXT_MODEL)
     hit = llm.cache_get(key)
     if hit is not None:
@@ -184,7 +184,8 @@ def screen_attack(sample_id: str, job: str, ctx: dict) -> dict:
 
 def attack_and_test(sample_id: str, technique: str, goal: str, style: str, seed: int | None,
                     screen_job: str | None = None) -> dict:
-    attack = generate_attack(sample_id, technique, goal, style, seed, weighted=True)
+    # Uniform random picks: the public demo keeps no state between runs (the eval CLI's fuzz mode still learns).
+    attack = generate_attack(sample_id, technique, goal, style, seed)
     key = attack["answer_key"]
     result = evaluate(attack)
     out = {
@@ -205,8 +206,4 @@ def attack_and_test(sample_id: str, technique: str, goal: str, style: str, seed:
             out["screening"] = screen_attack(key["sample_id"], screen_job, result["ctx"])
         except Exception as exc:  # noqa: BLE001
             out["screening_error"] = f"Screening failed ({type(exc).__name__})."
-    if key["invisible"]:
-        state = load_state()
-        record(state, key["technique"], key["style"], not result["detected"], key["payload"], key["goal"])
-        save_state(state)
     return out

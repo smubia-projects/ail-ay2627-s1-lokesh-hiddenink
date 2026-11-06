@@ -7,7 +7,7 @@ import uuid
 
 from rapidfuzz import fuzz
 
-from . import classify, config, gap, llm, payload_library
+from . import classify, config, gap, payload_library
 from .forensics import docx as docx_forensics
 from .forensics import pdf as pdf_forensics
 from .forensics import unicode as uni
@@ -51,7 +51,7 @@ def _group_spans(spans) -> list[dict]:
 
 
 def scan(file_name: str, data: bytes, use_ai: bool = True) -> tuple[ScanReport, dict]:
-    """Returns the report and a private context (full texts) that is never persisted."""
+    """Returns the report and a context with the texts the screeners need (used by the Red-Team Lab)."""
     if len(data) > config.MAX_FILE_MB * 1024 * 1024:
         raise ValueError(f"File is larger than {config.MAX_FILE_MB:g} MB.")
     ftype = detect_type(file_name, data)
@@ -60,9 +60,6 @@ def scan(file_name: str, data: bytes, use_ai: bool = True) -> tuple[ScanReport, 
     warnings: list[str] = []
     if not config.openai_enabled():
         warnings.append("OpenAI key not configured: running deterministic layers only.")
-    elif use_ai and llm.budget_blocked():
-        use_ai = False
-        warnings.append("OpenAI budget limit reached: running deterministic layers only.")
 
     raw: list[dict] = []
     pages: list[dict] = []
@@ -127,8 +124,7 @@ def scan(file_name: str, data: bytes, use_ai: bool = True) -> tuple[ScanReport, 
         warnings.append(err)
 
     try:
-        matches, mode = payload_library.match([f["text"] for f in findings], use_embeddings=use_ai)
-        ai_layers["payload_library"] = mode
+        matches = payload_library.match([f["text"] for f in findings])
         for f, m in zip(findings, matches):
             f["payload_matches"] = m
     except Exception as exc:  # noqa: BLE001
@@ -141,6 +137,7 @@ def scan(file_name: str, data: bytes, use_ai: bool = True) -> tuple[ScanReport, 
             sanitized = sanitized.replace(f["text"], "")
     sanitized = uni.strip_invisible(sanitized)
 
+    hidden_texts = [f["text"] for f in findings if f["category"] != "benign_hidden"]
     report = ScanReport(
         scan_id=uuid.uuid4().hex,
         file_name=file_name[:200],
@@ -153,11 +150,11 @@ def scan(file_name: str, data: bytes, use_ai: bool = True) -> tuple[ScanReport, 
         pages=pages,
         machine_text=machine_text,
         sanitized_text=sanitized,
+        hidden_texts=hidden_texts,
         ai_layers=ai_layers,
         warnings=warnings,
     )
-    context = {"machine_text": machine_text, "sanitized_text": sanitized,
-               "hidden_texts": [f["text"] for f in findings if f["category"] != "benign_hidden"]}
+    context = {"machine_text": machine_text, "sanitized_text": sanitized, "hidden_texts": hidden_texts}
     return report, context
 
 

@@ -3,21 +3,18 @@
 All calls go through here so that: the key is read only from the environment,
 failures degrade gracefully (the deterministic layers still work), every
 response that should be JSON is validated against a strict schema, and token
-usage is counted for the Red-Team Lab's cost cap.
+usage is counted for the eval CLI's fuzz budget.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import threading
-from contextvars import ContextVar
-from datetime import datetime, timezone
-from typing import Any, Callable
-
-from . import config, spend
-
-import hashlib
 from collections import OrderedDict
+from typing import Any
+
+from . import config
 
 log = logging.getLogger("hiddenink.llm")
 
@@ -25,7 +22,7 @@ _client = None
 _lock = threading.Lock()
 _tokens_used = 0
 _cache: OrderedDict[str, dict] = OrderedDict()
-CACHE_SIZE = 500  
+CACHE_SIZE = 500
 
 
 class LLMUnavailable(RuntimeError):
@@ -47,52 +44,17 @@ def tokens_used() -> int:
     return _tokens_used
 
 
-def _count(resp, model: str) -> None:
+def _count(resp) -> None:
     global _tokens_used
     usage = getattr(resp, "usage", None)
     if usage is None:
         return
     with _lock:
         _tokens_used += int(getattr(usage, "total_tokens", 0) or 0)
-        try:
-            # Embeddings report prompt tokens only; reasoning tokens are already inside completion_tokens.
-            spend.record(model, int(getattr(usage, "prompt_tokens", 0) or 0), int(getattr(usage, "completion_tokens", 0) or 0))
-        except Exception:  # noqa: BLE001 - the spend tracker must never break an API call
-            log.warning("Spend tracker failed", exc_info=True)
 
 
 _minimal_rejected = False  # set once the API refuses reasoning_effort="minimal"; "low" is used from then on
-_hard_stop_announced = False
 REASONING_MODELS = ("gpt-5", "gpt-6", "o3", "o4")
-
-
-def budget_blocked() -> bool:
-    """True when the spend tracker's hard stop is reached. Prints one [spend] HARD STOP line when it first trips."""
-    global _hard_stop_announced
-    try:
-        blocked = spend.hard_stop_reached()
-    except Exception:  # noqa: BLE001 - a broken tracker must not block the API
-        return False
-    if blocked and not _hard_stop_announced:
-        _hard_stop_announced = True
-        s = spend.summary()
-        print(f"[spend] HARD STOP ${s['total_usd']:.4f} / ${s['limit_usd']:.2f} used ({s['percent']:.1f}%): "
-              f"OpenAI calls are blocked at {config.SPEND_HARD_STOP_PCT:g}% until `python -m app.spend reset`", flush=True)
-    elif not blocked:
-        _hard_stop_announced = False  # announce again if it trips after a reset
-    return blocked
-
-
-# Set for the duration of a trial request (see trial.ai_scope): called before each OpenAI call, False blocks it.
-call_allowance: ContextVar[Callable[[], bool] | None] = ContextVar("call_allowance", default=None)
-
-
-def _guard() -> None:
-    if budget_blocked():
-        raise LLMUnavailable("Budget limit reached")
-    allow = call_allowance.get()
-    if allow is not None and not allow():
-        raise LLMUnavailable("Trial AI limit reached")
 
 
 def _rejects_minimal(exc: Exception) -> bool:
@@ -108,7 +70,6 @@ def json_call(system: str, user: Any, schema_name: str, schema: dict, model: str
     output limit if the answer was cut off or isn't valid JSON.
     """
     global _minimal_rejected
-    _guard()
     model = model or config.OPENAI_TEXT_MODEL
     # Reasoning models accept an effort setting; older chat models reject it.
     effort = (reasoning_effort or config.OPENAI_REASONING_EFFORT) if model.startswith(REASONING_MODELS) else ""
@@ -130,7 +91,7 @@ def json_call(system: str, user: Any, schema_name: str, schema: dict, model: str
                 log.warning("reasoning_effort=minimal was rejected for %s; using low from now on", model)
                 continue
             raise
-        _count(resp, model)
+        _count(resp)
         choice = resp.choices[0]
         if getattr(choice.message, "refusal", None):
             raise RuntimeError(f"Model refused: {choice.message.refusal}")
@@ -146,7 +107,7 @@ def json_call(system: str, user: Any, schema_name: str, schema: dict, model: str
     raise RuntimeError("Model call failed after retries.")
 
 
-# ---------- reusable answers: in memory, backed by MongoDB (the in-memory database when MONGODB_URI is unset) ----------
+# ---------- reusable answers: an in-memory LRU cache (per process; the demo keeps no database) ----------
 def cache_key(*parts: Any) -> str:
     return hashlib.sha256(json.dumps(parts, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
@@ -156,31 +117,11 @@ def cache_get(key: str) -> Any | None:
         if key in _cache:
             _cache.move_to_end(key)
             return json.loads(json.dumps(_cache[key]))
-    try:
-        from .db import get_db
-        doc = get_db().llm_cache.find_one({"_id": key}, {"value": 1})
-    except Exception:  # noqa: BLE001 - a cache miss is always safe
-        log.warning("llm cache read failed", exc_info=True)
-        return None
-    if not doc:
-        return None
-    value = json.loads(doc["value"])
-    _remember(key, value)
-    return json.loads(json.dumps(value))
+    return None
 
 
 def cache_put(key: str, value: Any) -> None:
-    """Stores the model's output only (as JSON), never the request or the API key."""
-    _remember(key, value)
-    try:
-        from .db import get_db
-        get_db().llm_cache.update_one({"_id": key}, {"$set": {"value": json.dumps(value, ensure_ascii=False),
-                                                              "created_at": datetime.now(timezone.utc)}}, upsert=True)
-    except Exception:  # noqa: BLE001
-        log.warning("llm cache write failed", exc_info=True)
-
-
-def _remember(key: str, value: Any) -> None:
+    """Stores the model's output only, never the request or the API key."""
     with _lock:
         _cache[key] = json.loads(json.dumps(value))
         _cache.move_to_end(key)
@@ -202,13 +143,6 @@ def cached_json_call(system: str, user: Any, schema_name: str, schema: dict, **k
     out = json_call(system, user, schema_name, schema, **kw)
     cache_put(key, out)
     return json.loads(json.dumps(out))
-
-
-def embed(texts: list[str]) -> list[list[float]]:
-    _guard()
-    resp = client().embeddings.create(model=config.OPENAI_EMBED_MODEL, input=[t[:4000] for t in texts])
-    _count(resp, config.OPENAI_EMBED_MODEL)
-    return [d.embedding for d in resp.data]
 
 
 def obj(properties: dict, required: list[str] | None = None) -> dict:
