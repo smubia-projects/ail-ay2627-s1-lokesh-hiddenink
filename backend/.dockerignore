@@ -1,0 +1,15 @@
+# Only the API (app/) and requirements.txt belong in the image.
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.vscode/
+tests/
+eval/
+requirements-dev.txt
+Dockerfile
+.dockerignore
