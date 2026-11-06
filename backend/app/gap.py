@@ -43,7 +43,7 @@ def transcribe(image_b64: str) -> str:
             {"type": "text", "text": "Transcribe the human-visible text on this page."},
             {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}", "detail": "high"}},
         ],
-        "page_transcription", SCHEMA, model=config.OPENAI_VISION_MODEL, max_tokens=config.MAX_TOKENS_VISION,
+        "page_transcription", SCHEMA, model=config.OPENROUTER_VISION_MODEL, max_tokens=config.MAX_TOKENS_VISION,
         reasoning_effort=config.REASONING_VISION,
     )
     return out["text"]

@@ -23,7 +23,7 @@ def options() -> dict:
         "techniques": techniques.ALL_TECHNIQUES,
         "goals": list(payloads.GOALS),
         "styles": list(payloads.STYLES),
-        "openai": config.openai_enabled(),
+        "ai_enabled": config.llm_enabled(),
         "jobs": samples.JOBS,
     }
 
@@ -151,7 +151,7 @@ def evaluate(attack: dict, use_ai: bool = True) -> dict:
 
 def _baseline(sample_id: str, job: str) -> dict:
     """Screener scores for the clean built-in resume, cached in memory so they are paid for once per process."""
-    key = llm.cache_key("redteam-baseline", sample_id, job, config.OPENAI_TEXT_MODEL)
+    key = llm.cache_key("redteam-baseline", sample_id, job, config.OPENROUTER_TEXT_MODEL)
     hit = llm.cache_get(key)
     if hit is not None:
         return hit
@@ -201,7 +201,7 @@ def attack_and_test(sample_id: str, technique: str, goal: str, style: str, seed:
         "findings": [f.model_dump() for f in result["report"].findings],
         "counted": key["invisible"],
     }
-    if screen_job and config.openai_enabled() and key["file_type"] == "pdf":
+    if screen_job and config.llm_enabled() and key["file_type"] == "pdf":
         try:
             out["screening"] = screen_attack(key["sample_id"], screen_job, result["ctx"])
         except Exception as exc:  # noqa: BLE001

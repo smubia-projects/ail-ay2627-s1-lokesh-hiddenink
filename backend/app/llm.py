@@ -1,4 +1,4 @@
-"""Thin wrapper around the OpenAI API.
+"""Thin wrapper around the OpenRouter chat-completions API (OpenAI-compatible, via the openai SDK).
 
 All calls go through here so that: the key is read only from the environment,
 failures degrade gracefully (the deterministic layers still work), every
@@ -31,12 +31,13 @@ class LLMUnavailable(RuntimeError):
 
 def client():
     global _client
-    if not config.openai_enabled():
-        raise LLMUnavailable("OPENAI_API_KEY is not set.")
+    if not config.llm_enabled():
+        raise LLMUnavailable("OPENROUTER_API_KEY is not set.")
     with _lock:
         if _client is None:
             from openai import OpenAI
-            _client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.OPENAI_TIMEOUT, max_retries=2)
+            _client = OpenAI(base_url=config.OPENROUTER_BASE_URL, api_key=config.OPENROUTER_API_KEY,
+                             timeout=config.OPENROUTER_TIMEOUT, max_retries=2)
     return _client
 
 
@@ -53,26 +54,26 @@ def _count(resp) -> None:
         _tokens_used += int(getattr(usage, "total_tokens", 0) or 0)
 
 
-_minimal_rejected = False  # set once the API refuses reasoning_effort="minimal"; "low" is used from then on
-REASONING_MODELS = ("gpt-5", "gpt-6", "o3", "o4")
+_minimal_rejected = False  # set once the API refuses reasoning effort "minimal"; "low" is used from then on
 
 
 def _rejects_minimal(exc: Exception) -> bool:
     text = str(exc).lower()
-    return getattr(exc, "status_code", None) == 400 and ("minimal" in text or "reasoning_effort" in text)
+    return getattr(exc, "status_code", None) == 400 and ("minimal" in text or "reasoning" in text)
 
 
 def json_call(system: str, user: Any, schema_name: str, schema: dict, model: str | None = None,
               max_tokens: int = 8000, reasoning_effort: str | None = None) -> dict:
     """Chat completion with a strict JSON schema. `user` may be a string or a content list (for images).
 
-    Retries once with "low" if the API rejects reasoning_effort="minimal", and once with double the
+    Retries once with "low" if the API rejects reasoning effort "minimal", and once with double the
     output limit if the answer was cut off or isn't valid JSON.
     """
     global _minimal_rejected
-    model = model or config.OPENAI_TEXT_MODEL
-    # Reasoning models accept an effort setting; older chat models reject it.
-    effort = (reasoning_effort or config.OPENAI_REASONING_EFFORT) if model.startswith(REASONING_MODELS) else ""
+    model = model or config.OPENROUTER_TEXT_MODEL
+    # OpenRouter's unified `reasoning: {effort}` parameter; it is ignored for models that don't reason.
+    # Set OPENROUTER_REASONING_EFFORT empty to never send it.
+    effort = (reasoning_effort or config.OPENROUTER_REASONING_EFFORT) if config.OPENROUTER_REASONING_EFFORT else ""
     limit = max_tokens
     for _attempt in range(3):  # the first try, at most one effort fallback, at most one larger-limit retry
         if effort == "minimal" and _minimal_rejected:
@@ -82,13 +83,13 @@ def json_call(system: str, user: Any, schema_name: str, schema: dict, model: str
                 model=model,
                 messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                 response_format={"type": "json_schema", "json_schema": {"name": schema_name, "strict": True, "schema": schema}},
-                max_completion_tokens=limit,
-                **({"reasoning_effort": effort} if effort else {}),
+                max_tokens=limit,
+                **({"extra_body": {"reasoning": {"effort": effort}}} if effort else {}),
             )
         except Exception as exc:  # noqa: BLE001
             if effort == "minimal" and not _minimal_rejected and _rejects_minimal(exc):
                 _minimal_rejected = True
-                log.warning("reasoning_effort=minimal was rejected for %s; using low from now on", model)
+                log.warning("reasoning effort minimal was rejected for %s; using low from now on", model)
                 continue
             raise
         _count(resp)
@@ -136,7 +137,7 @@ def cached_json_call(system: str, user: Any, schema_name: str, schema: dict, **k
     different score each time it is scanned, and we would pay for it again. Not used where
     fresh output is wanted (the Red-Team payload writer).
     """
-    key = cache_key(system, user, schema_name, kw.get("model") or config.OPENAI_TEXT_MODEL)
+    key = cache_key(system, user, schema_name, kw.get("model") or config.OPENROUTER_TEXT_MODEL)
     hit = cache_get(key)
     if hit is not None:
         return hit

@@ -41,8 +41,8 @@ def health():
 @app.get("/api/info")
 def info():
     """Which AI layers are available, so the UI can enable or explain them."""
-    return {"ai_enabled": config.openai_enabled(), "text_model": config.OPENAI_TEXT_MODEL,
-            "vision_model": config.OPENAI_VISION_MODEL, "max_file_mb": config.MAX_FILE_MB,
+    return {"ai_enabled": config.llm_enabled(), "text_model": config.OPENROUTER_TEXT_MODEL,
+            "vision_model": config.OPENROUTER_VISION_MODEL, "max_file_mb": config.MAX_FILE_MB,
             "max_pages": config.MAX_PAGES}
 
 
@@ -82,8 +82,8 @@ class ScreenIn(BaseModel):
 
 @app.post("/api/screen")
 def run_screen(request: Request, body: ScreenIn):
-    if not config.openai_enabled():
-        raise HTTPException(501, "Screening needs an LLM API key on the server.")
+    if not config.llm_enabled():
+        raise HTTPException(501, "Screening needs an OpenRouter API key on the server.")
     hidden = [h[:3000] for h in body.hidden_texts]
     try:
         return {"protected": screen.protected(body.job_description, body.sanitized_text, hidden).model_dump()}

@@ -1,4 +1,4 @@
-"""The OpenAI layers, tested with a fake model so no key or network is needed."""
+"""The LLM layers, tested with a fake model so no key or network is needed."""
 import pytest
 
 from app import classify, config, llm, scanner, screen
@@ -33,7 +33,7 @@ def fake_llm(monkeypatch):
                 "injection_attempt_noticed": False}
         raise AssertionError(schema_name)
 
-    monkeypatch.setattr(config, "OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(config, "OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(llm, "json_call", fake)
     return calls
 
