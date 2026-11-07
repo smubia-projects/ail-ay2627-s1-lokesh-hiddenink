@@ -13,7 +13,7 @@ export const PROJECT_CTA = {
   accentColor: '#8B5CF6',
   headline: "You've uncovered the hidden ink!",
   description:
-    'You used all {count} free AI runs for this action in the HiddenInk demo. Want to build AI security tools that catch prompt injection? Join us and make projects like this.',
+    'Want to build AI security tools that catch what attackers smuggle into a prompt? AI Lodge students put their work in front of real visitors and iterate on the feedback.',
   programme: 'AI Lodge',
   programmeLink: 'https://www.smubia.com/ailodge',
   githubLink: 'https://github.com/smubia-projects/ail-ay2627-s1-lokesh-hiddenink',
