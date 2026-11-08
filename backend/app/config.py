@@ -25,14 +25,14 @@ _load_dotenv()
 # All model calls go through OpenRouter (OpenAI-compatible API). Model IDs use OpenRouter's "vendor/model" form.
 OPENROUTER_API_KEY = (os.getenv("API_KEY", "").strip() or os.getenv("OPENROUTER_API_KEY", ""))
 OPENROUTER_BASE_URL = (os.getenv("API_BASE_URL", "").strip() or os.getenv("OPENROUTER_BASE_URL", "https://api.apiyi.com/v1"))
-OPENROUTER_TEXT_MODEL = (os.getenv("MODEL_NAME", "").strip() or os.getenv("OPENROUTER_TEXT_MODEL", "gpt-5-mini"))
-# Page transcription for the Visibility Gap. gpt-5.4-mini reads images at a fraction of gpt-5.4's price.
-OPENROUTER_VISION_MODEL = (os.getenv("VISION_MODEL_NAME", "").strip() or os.getenv("OPENROUTER_VISION_MODEL", "gpt-5-mini"))
+OPENROUTER_TEXT_MODEL = (os.getenv("MODEL_NAME", "").strip() or os.getenv("OPENROUTER_TEXT_MODEL", "deepseek-v4-1-flash-260910"))
+# Page transcription for the Visibility Gap (rendered PNG pages). deepseek-v4-1-flash-260910 reads images.
+OPENROUTER_VISION_MODEL = (os.getenv("VISION_MODEL_NAME", "").strip() or os.getenv("OPENROUTER_VISION_MODEL", "deepseek-v4-1-flash-260910"))
 OPENROUTER_REASONING_EFFORT = os.getenv("OPENROUTER_REASONING_EFFORT", "low")  # set empty to never send `reasoning`
 OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "60"))
 # Cheaper model for tasks where quality barely matters: the classifier (its regex floor still wins) and the
 # Red-Team payload writer. The screeners keep OPENROUTER_TEXT_MODEL; transcription keeps OPENROUTER_VISION_MODEL.
-OPENROUTER_CHEAP_MODEL = (os.getenv("CHEAP_MODEL_NAME", "").strip() or os.getenv("OPENROUTER_CHEAP_MODEL", "gpt-5.4-nano"))
+OPENROUTER_CHEAP_MODEL = (os.getenv("CHEAP_MODEL_NAME", "").strip() or os.getenv("OPENROUTER_CHEAP_MODEL", "deepseek-v4-1-flash-260910"))
 
 # Reasoning effort per task (reasoning models only). "minimal" falls back to "low" if the API rejects it.
 REASONING_VISION = os.getenv("REASONING_VISION", "minimal")
