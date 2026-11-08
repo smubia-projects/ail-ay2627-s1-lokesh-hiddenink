@@ -74,6 +74,8 @@ def json_call(system: str, user: Any, schema_name: str, schema: dict, model: str
     # OpenRouter's unified `reasoning: {effort}` parameter; it is ignored for models that don't reason.
     # Set OPENROUTER_REASONING_EFFORT empty to never send it.
     effort = (reasoning_effort or config.OPENROUTER_REASONING_EFFORT) if config.OPENROUTER_REASONING_EFFORT else ""
+    # DeepSeek ignores `reasoning.effort` and thinks by default (about 2x slower); it takes its own flag instead.
+    deepseek = "deepseek" in model
     limit = max_tokens
     for _attempt in range(3):  # the first try, at most one effort fallback, at most one larger-limit retry
         if effort == "minimal" and _minimal_rejected:
@@ -84,7 +86,8 @@ def json_call(system: str, user: Any, schema_name: str, schema: dict, model: str
                 messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                 response_format={"type": "json_schema", "json_schema": {"name": schema_name, "strict": True, "schema": schema}},
                 max_tokens=limit,
-                **({"extra_body": {"reasoning": {"effort": effort}}} if effort else {}),
+                **({"extra_body": {"reasoning_effort": "none"}} if deepseek
+                   else {"extra_body": {"reasoning": {"effort": effort}}} if effort else {}),
             )
         except Exception as exc:  # noqa: BLE001
             if effort == "minimal" and not _minimal_rejected and _rejects_minimal(exc):

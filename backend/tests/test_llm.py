@@ -53,3 +53,14 @@ def test_cut_off_answer_is_retried_with_double_the_limit(monkeypatch):
     responses[:] = [("not json", "stop"), ("still not json", "stop")]
     with pytest.raises(RuntimeError, match="invalid JSON"):
         llm.json_call("s", "u", "x", {}, model="openai/gpt-4o-mini", max_tokens=100)
+
+
+def test_deepseek_gets_its_own_no_thinking_flag(monkeypatch):
+    seen_kw = []
+    def create(**kw):
+        seen_kw.append(kw)
+        return SimpleNamespace(usage=None, choices=[SimpleNamespace(
+            finish_reason="stop", message=SimpleNamespace(content='{"ok": 1}', refusal=None))])
+    monkeypatch.setattr(llm, "client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))))
+    assert llm.json_call("s", "u", "x", {}, model="deepseek-v4-1-flash-260910", reasoning_effort="minimal") == {"ok": 1}
+    assert seen_kw[0]["extra_body"] == {"reasoning_effort": "none"}
